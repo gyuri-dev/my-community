@@ -7,7 +7,7 @@ import Loading from '../components/common/Loading'
 import styles from './WritePostPage.module.css'
 
 export default function WritePostPage() {
-  const { id } = useParams()  // 수정 모드일 때 id 존재
+  const { id } = useParams()
   const isEdit = Boolean(id)
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -19,6 +19,7 @@ export default function WritePostPage() {
   const [existingImages, setExistingImages] = useState([])
   const [submitting, setSubmitting] = useState(false)
   const [loading, setLoading] = useState(isEdit)
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (!user) navigate('/login')
@@ -36,7 +37,6 @@ export default function WritePostPage() {
     }
     setTitle(data.title)
     setContent(data.content)
-
     const { data: imgs } = await supabase.from('post_images').select('*').eq('post_id', id)
     setExistingImages(imgs || [])
     setLoading(false)
@@ -67,32 +67,49 @@ export default function WritePostPage() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!title.trim() || !content.trim()) return
+    setError('')
     setSubmitting(true)
 
-    let postId = id
-    if (isEdit) {
-      await supabase.from('posts').update({ title: title.trim(), content: content.trim() }).eq('id', id)
-    } else {
-      const { data } = await supabase
-        .from('posts')
-        .insert({ user_id: user.id, title: title.trim(), content: content.trim() })
-        .select()
-        .single()
-      postId = data.id
-    }
+    try {
+      let postId = id
 
-    // 이미지 업로드
-    for (const file of files) {
-      const ext = file.name.split('.').pop()
-      const path = `${user.id}/${postId}/${Date.now()}.${ext}`
-      const { data: uploaded } = await supabase.storage.from('post-images').upload(path, file)
-      if (uploaded) {
-        const { data: { publicUrl } } = supabase.storage.from('post-images').getPublicUrl(path)
-        await supabase.from('post_images').insert({ post_id: postId, image_url: publicUrl })
+      if (isEdit) {
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ title: title.trim(), content: content.trim() })
+          .eq('id', id)
+        if (updateError) throw updateError
+      } else {
+        const { data, error: insertError } = await supabase
+          .from('posts')
+          .insert({ user_id: user.id, title: title.trim(), content: content.trim() })
+          .select()
+          .single()
+        if (insertError) throw insertError
+        postId = data.id
       }
-    }
 
-    navigate(`/posts/${postId}`)
+      // 이미지 업로드
+      for (const file of files) {
+        const ext = file.name.split('.').pop()
+        const path = `${user.id}/${postId}/${Date.now()}.${ext}`
+        const { error: uploadError } = await supabase.storage
+          .from('post-images')
+          .upload(path, file)
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('post-images')
+            .getPublicUrl(path)
+          await supabase.from('post_images').insert({ post_id: postId, image_url: publicUrl })
+        }
+      }
+
+      navigate(`/posts/${postId}`)
+    } catch (err) {
+      console.error('게시물 저장 오류:', err)
+      setError(err.message || '게시물 저장에 실패했습니다. 다시 시도해 주세요.')
+      setSubmitting(false)
+    }
   }
 
   if (loading) return <Loading />
@@ -124,7 +141,6 @@ export default function WritePostPage() {
             />
           </div>
 
-          {/* 이미지 업로드 */}
           <div className={styles.imageSection}>
             <label className={styles.imageLabel}>
               <ImagePlus size={18} />
@@ -132,7 +148,6 @@ export default function WritePostPage() {
               <input type="file" accept="image/*" multiple onChange={handleFileChange} hidden />
             </label>
 
-            {/* 기존 이미지 (수정 모드) */}
             {existingImages.map(img => (
               <div key={img.id} className={styles.imgPreview}>
                 <img src={img.image_url} alt="기존 이미지" />
@@ -142,7 +157,6 @@ export default function WritePostPage() {
               </div>
             ))}
 
-            {/* 새 이미지 미리보기 */}
             {previews.map((src, i) => (
               <div key={i} className={styles.imgPreview}>
                 <img src={src} alt="미리보기" />
@@ -152,6 +166,8 @@ export default function WritePostPage() {
               </div>
             ))}
           </div>
+
+          {error && <p className="error-text">{error}</p>}
 
           <div className={styles.formActions}>
             <button type="button" onClick={() => navigate(-1)} className="btn-secondary">
