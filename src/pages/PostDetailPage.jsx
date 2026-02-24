@@ -8,7 +8,7 @@ import styles from './PostDetailPage.module.css'
 
 export default function PostDetailPage() {
   const { id } = useParams()
-  const { user, profile } = useAuth()
+  const { user } = useAuth()
   const navigate = useNavigate()
 
   const [post, setPost] = useState(null)
@@ -25,16 +25,47 @@ export default function PostDetailPage() {
   }, [id])
 
   async function fetchAll() {
-    const [postRes, imgRes, commentRes, likeRes] = await Promise.all([
-      supabase.from('posts').select('*, profiles(username)').eq('id', id).single(),
+    // 1. 게시물 조회
+    const { data: postData, error: postError } = await supabase
+      .from('posts')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (postError || !postData) {
+      setLoading(false)
+      return
+    }
+
+    // 2. 나머지 데이터 병렬 조회
+    const [profileRes, imgRes, commentRes, likeRes] = await Promise.all([
+      supabase.from('profiles').select('username').eq('id', postData.user_id).single(),
       supabase.from('post_images').select('*').eq('post_id', id),
-      supabase.from('comments').select('*, profiles(username)').eq('post_id', id).order('created_at'),
+      supabase.from('comments').select('id, content, user_id, created_at').eq('post_id', id).order('created_at'),
       supabase.from('likes').select('*').eq('post_id', id),
     ])
 
-    setPost(postRes.data)
+    // 3. 댓글 작성자 프로필 일괄 조회
+    const commentList = commentRes.data || []
+    let commentsWithProfiles = commentList
+
+    if (commentList.length > 0) {
+      const userIds = [...new Set(commentList.map(c => c.user_id))]
+      const { data: commentProfiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds)
+
+      const profileMap = Object.fromEntries((commentProfiles || []).map(p => [p.id, p]))
+      commentsWithProfiles = commentList.map(c => ({
+        ...c,
+        profiles: profileMap[c.user_id] || null
+      }))
+    }
+
+    setPost({ ...postData, profiles: profileRes.data })
     setImages(imgRes.data || [])
-    setComments(commentRes.data || [])
+    setComments(commentsWithProfiles)
     setLikes(likeRes.data || [])
     if (user) {
       setLiked((likeRes.data || []).some(l => l.user_id === user.id))
@@ -64,11 +95,13 @@ export default function PostDetailPage() {
     const { data } = await supabase
       .from('comments')
       .insert({ post_id: id, user_id: user.id, content: commentText.trim() })
-      .select('*, profiles(username)')
+      .select('id, content, user_id, created_at')
       .single()
 
     if (data) {
-      setComments(prev => [...prev, data])
+      const { data: profile } = await supabase
+        .from('profiles').select('username').eq('id', user.id).single()
+      setComments(prev => [...prev, { ...data, profiles: profile }])
       setCommentText('')
     }
     setSubmitting(false)
@@ -86,7 +119,11 @@ export default function PostDetailPage() {
   }
 
   if (loading) return <Loading />
-  if (!post) return <div className="container" style={{ padding: '4rem 0', textAlign: 'center' }}>게시물을 찾을 수 없어요.</div>
+  if (!post) return (
+    <div className="container" style={{ padding: '4rem 0', textAlign: 'center', color: 'var(--brown-400)' }}>
+      게시물을 찾을 수 없어요.
+    </div>
+  )
 
   const date = new Date(post.created_at).toLocaleDateString('ko-KR', {
     year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -96,12 +133,10 @@ export default function PostDetailPage() {
   return (
     <div className="container">
       <div className={styles.wrap}>
-        {/* 뒤로가기 */}
         <button onClick={() => navigate(-1)} className={styles.backBtn}>
           <ArrowLeft size={16} /> 목록으로
         </button>
 
-        {/* 게시물 */}
         <article className={styles.post}>
           <div className={styles.postHeader}>
             <h1 className={styles.title}>{post.title}</h1>
@@ -111,7 +146,6 @@ export default function PostDetailPage() {
             </div>
           </div>
 
-          {/* 이미지 */}
           {images.length > 0 && (
             <div className={styles.images}>
               {images.map(img => (
@@ -120,14 +154,12 @@ export default function PostDetailPage() {
             </div>
           )}
 
-          {/* 본문 */}
           <div className={styles.content}>
             {post.content.split('\n').map((line, i) => (
               <p key={i}>{line || <br />}</p>
             ))}
           </div>
 
-          {/* 액션 버튼 */}
           <div className={styles.actions}>
             <button
               onClick={toggleLike}
@@ -153,7 +185,6 @@ export default function PostDetailPage() {
           </div>
         </article>
 
-        {/* 댓글 */}
         <section className={styles.comments}>
           <h2 className={styles.commentsTitle}>
             <MessageCircle size={18} /> 댓글 {comments.length}개

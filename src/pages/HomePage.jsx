@@ -14,24 +14,41 @@ export default function HomePage() {
   }, [])
 
   async function fetchPosts() {
-    const { data } = await supabase
+    // 1. 게시물 + 이미지/좋아요/댓글 수 조회
+    const { data: postsData } = await supabase
       .from('posts')
       .select(`
-        id, title, content, created_at,
-        profiles(username),
+        id, title, content, created_at, user_id,
         post_images(image_url),
         likes(id),
         comments(id)
       `)
       .order('created_at', { ascending: false })
 
-    setPosts(data || [])
+    if (!postsData || postsData.length === 0) {
+      setPosts([])
+      setLoading(false)
+      return
+    }
+
+    // 2. 작성자 프로필 일괄 조회
+    const userIds = [...new Set(postsData.map(p => p.user_id))]
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds)
+
+    const profileMap = Object.fromEntries((profilesData || []).map(p => [p.id, p]))
+
+    setPosts(postsData.map(post => ({
+      ...post,
+      profiles: profileMap[post.user_id] || null
+    })))
     setLoading(false)
   }
 
   return (
     <div>
-      {/* 히어로 배너 */}
       <div className={styles.hero}>
         <div className={`container ${styles.heroInner}`}>
           <div className={styles.heroIcons}>
@@ -51,7 +68,6 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* 게시물 목록 */}
       <div className="container">
         <h2 className={styles.listTitle}>최근 게시물</h2>
 
@@ -87,12 +103,11 @@ function PostCard({ post }) {
 
   return (
     <Link to={`/posts/${post.id}`} className={styles.card}>
-      {image && (
+      {image ? (
         <div className={styles.cardImg}>
           <img src={image} alt="게시물 이미지" />
         </div>
-      )}
-      {!image && (
+      ) : (
         <div className={styles.cardImgPlaceholder}>
           <NotebookPen size={36} />
         </div>
