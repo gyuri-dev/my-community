@@ -1,0 +1,30 @@
+.footer {
+  background: var(--beige-100);
+  border-top: 1.5px solid var(--beige-200);
+  padding: 2rem 0;
+  margin-top: 4rem;
+}
+
+.inner {
+  text-align: center;
+}
+
+.icons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  color: var(--brown-400);
+  margin-bottom: 0.6rem;
+}
+
+.text {
+  font-size: 0.9rem;
+  color: var(--brown-500);
+  font-weight: 500;
+}
+
+.copy {
+  font-size: 0.8rem;
+  color: var(--brown-300);
+  margin-top: 0.3rem;
+}

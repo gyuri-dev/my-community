@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --beige-50: #faf8f3;
+  --beige-100: #f5f0e8;
+  --beige-200: #ede4d3;
+  --beige-300: #d9c9b0;
+  --brown-300: #c4a882;
+  --brown-400: #b08d65;
+  --brown-500: #8b6f47;
+  --brown-600: #6d5535;
+  --brown-700: #4f3d24;
+  --white: #ffffff;
+  --gray-400: #9ca3af;
+  --gray-500: #6b7280;
+  --gray-600: #4b5563;
+  --red-400: #f87171;
+  --red-500: #ef4444;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background-color: var(--beige-50);
+  color: var(--brown-700);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  font-family: inherit;
+}
+
+input, textarea {
+  font-family: inherit;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+.btn-primary {
+  background-color: var(--brown-500);
+  color: var(--white);
+  border: none;
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-primary:hover {
+  background-color: var(--brown-600);
+}
+
+.btn-secondary {
+  background-color: var(--beige-200);
+  color: var(--brown-600);
+  border: 1px solid var(--beige-300);
+  padding: 0.6rem 1.4rem;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background-color: var(--beige-300);
+}
+
+.card {
+  background: var(--white);
+  border-radius: 12px;
+  border: 1px solid var(--beige-200);
+  padding: 1.5rem;
+  box-shadow: 0 2px 8px rgba(139, 111, 71, 0.06);
+}
+
+.form-group {
+  margin-bottom: 1.2rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--brown-600);
+  margin-bottom: 0.4rem;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid var(--beige-300);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: var(--beige-50);
+  color: var(--brown-700);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  border-color: var(--brown-400);
+  background: var(--white);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+}
+
+.error-text {
+  color: var(--red-500);
+  font-size: 0.85rem;
+  margin-top: 0.3rem;
+}
